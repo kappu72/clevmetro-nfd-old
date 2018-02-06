@@ -876,6 +876,7 @@
             "update": "Update",
             "save": "Save",
             "delete": "Delete",
+            "edit": "Edit",
             "draw_loc": "Draw the location on the map",
             "get_my_loc": "Get my location",
             "draw": "Draw",
@@ -894,8 +895,20 @@
             "land_animal": "Land animal",
             "pond_lake_animal": "Pond lake animal",
             "stream_animal": "Stream animal",
-            "wetland_animal": "Wetland animal"
-
+            "wetland_animal": "Wetland animal",
+            "deleteTitle": "Delete Natural Feature",
+            "deleteMsg": "Are you sure you want to delete?"
+        },
+        "export" : {
+            "title": "Export Data",
+            "format": "File Format",
+            "srs":  "Spatial Reference System",
+            "export": "Export",
+            "downloadonlycurrentpage": "Download only current page",
+            "error": {
+                "title": "Error during export",
+                "invalidOutputFormat": "The selected export format is not available"
+            }
         }
     }
 }

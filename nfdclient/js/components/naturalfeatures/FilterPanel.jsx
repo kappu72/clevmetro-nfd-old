@@ -10,17 +10,17 @@ const React = require('react');
 const PropTypes = require('prop-types');
 const {Button, ButtonGroup} = require('react-bootstrap');
 
-const FilterPanel = ({height, children, onReset, onUpdate, disableBtns}) => {
+const FilterPanel = ({height, children, onReset, onUpdate, disableSync}) => {
     return (
         <div className="filter-panel">
-            <div style={{overflow: 'auto', height: height - 40 - 51 - 10 - 59 - 59 - 2 - 30 - 40}} className="ft-filter">
+            <div style={{overflow: 'auto', height: height - 10 - 59 - 59 - 2 - 30 - 40}} className="ft-filter">
                 {children ? children : null}
             </div>
             <div className="row" style={{height: 40}}>
                 <div className="text-center col-xs-12">
                     <ButtonGroup>
-                        <Button disabled={disableBtns} onClick={onReset}>Reset</Button>
-                        <Button disabled={disableBtns} onClick={onUpdate}>Update</Button>
+                        <Button onClick={onReset}>Clear</Button>
+                        <Button disabled={disableSync} onClick={onUpdate}>Sync</Button>
                     </ButtonGroup>
                 </div>
             </div>
@@ -33,7 +33,7 @@ FilterPanel.propTypes = {
   children: PropTypes.node,
   onReset: PropTypes.func,
   onUpdate: PropTypes.func,
-  disableBtns: PropTypes.bool
+  disableSync: PropTypes.bool
 };
 
 FilterPanel.defaultProps = {

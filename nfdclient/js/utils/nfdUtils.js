@@ -6,19 +6,23 @@
  * LICENSE file in the root directory of this source tree.
  */
 const baseUrl = '../../assets/img/';
+const baseStyle = {
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+};
 module.exports = {
-    getIconUrl: (ftType) => {
+    getIcon: (ftType) => {
         switch (ftType) {
             case 'plant':
-                return `${baseUrl}marker-icon-green-highlight.png`;
+                return {html: {...baseStyle, className: "marker-plant-h"}};
             case 'animal':
-                return `${baseUrl}marker-icon-purple-highlight.png`;
+                return {html: {...baseStyle, className: "marker-animal-h"}};
             case 'fungus':
-                return `${baseUrl}marker-icon-yellow-highlight.png`;
+                return {html: {...baseStyle, className: "marker-fungus-h"}};
             case 'slimemold':
-                return `${baseUrl}marker-icon-marine-highlight.png`;
+                return {html: {...baseStyle, className: "marker-slimemold-h"}};
             case 'naturalarea':
-                return `${baseUrl}marker-icon-blue-highlight.png`;
+                return {html: {...baseStyle, className: "marker-naturalarea-h"}};
             default:
                 return `${baseUrl}marker-icon-green-highlight.png`;
         }
@@ -36,7 +40,7 @@ module.exports = {
             case 'naturalarea':
                 return 'Natural area';
             default:
-                return 'Plant';
+                return '';
         }
     },
     getPrettyFeatureSubType(fst) {
@@ -60,7 +64,7 @@ module.exports = {
             case 'we':
                 return 'Wetland animal';
             default:
-                return 'Natural area';
+                return '';
         }
     },
     isWriter(user = {}, ft) {
@@ -71,5 +75,44 @@ module.exports = {
     },
     isLoading(loding = {}) {
         return Object.keys(loding).reduce((l, k) => l ? l : loding[k], false);
+    },
+    getFormIcon(formname) {
+        let icon = 'question-sign';
+        if (formname === 'species') {
+            icon = 'question-sign';
+        } else if (formname === 'species.element_species') {
+            icon = 'star';
+        } else if (formname === 'details') {
+            icon = 'th-list';
+        } else if (formname === 'details.lifestages') {
+            icon = 'refresh';
+        } else if (formname === 'occurrencemanagement') {
+            icon = 'cog';
+        } else if (formname === 'observation') {
+            icon = 'eye-open';
+        } else if (formname === 'observation.reporter') {
+            icon = 'reporter';
+        } else if (formname === 'observation.recorder') {
+            icon = 'recorder';
+        } else if (formname === 'observation.verifier') {
+            icon = 'verifier';
+        } else if (formname === 'voucher') {
+            icon = 'tag';
+        } else if (formname === 'location') {
+            icon = 'uniE062';
+        } else if (formname === 'details.vegetation') {
+            icon = 'uniE103';
+        } else if (formname === 'details.substrate') {
+            icon = 'uniE135';
+        } else if (formname.includes('earthworm')) {
+            icon = 'uniE232';
+        } else if (formname.includes('disturbance')) {
+            icon = 'uniE162';
+        } else if (formname.includes('association')) {
+            icon = 'uni4C';
+        } else if (formname.includes('fruit')) {
+            icon = 'uniF8FF';
+        }
+        return icon;
     }
 };

@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.gis',
     'django_filters',
+    'easy_pdf',
     'reversion',
     'rest_framework',
     'rest_framework_gis',
@@ -64,6 +65,7 @@ INSTALLED_APPS = [
     'rest_auth',
     'nfdcore',
     'nfdusers',
+    'nfdrenderers'
     
 ]
 
@@ -130,6 +132,13 @@ REST_FRAMEWORK = {
         #'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+        'nfdrenderers.XlsxRenderer',
+        'nfdrenderers.CsvRenderer',
+        'nfdrenderers.ShpRenderer',
     )
 }
 

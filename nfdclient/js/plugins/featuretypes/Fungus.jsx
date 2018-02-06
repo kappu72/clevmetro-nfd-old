@@ -10,21 +10,25 @@ const React = require('react');
 const {connect} = require('react-redux');
 
 const {loadList, selectFeature, zooToFeature, searchSpecies, setFilterProp, resetFtFilters} = require('../../actions/featuresearch');
-
+const {onToggleExport} = require('../../actions/exportfeatures');
 const FilterUtils = require('../../utils/FilterUtils');
 
 const dataSelector = (state) => state.featuresearch && state.featuresearch.fungus || {};
 const dataFilterSelector = (state) => state.featuresearch && state.featuresearch.fungus_filters || {};
 
-const FeatureTypePanel = require('../../components/naturalfeatures/FeatureTypePanel');
+const toggleExport = onToggleExport.bind(null, 'LIST', 'fungus', null);
+const FeatureTypePanel = connect(() => ({}), {
+    toggleExport
+})(require('../../components/naturalfeatures/FeatureTypePanel'));
+
 const FeaturesPanel = connect((state) => {
     const data = dataSelector(state);
     return {
         features: data.features || [],
         page: data.page || 0,
         total: data.total || 0,
-        pageSize: state.featuresearch && state.featuresearch.pageSize || 30,
-        height: state.map && state.map.present && state.map.present.size && state.map.present.size.height || 600};
+        pageSize: state.featuresearch && state.featuresearch.pageSize || 30
+    };
 }, {
     loadFtType: loadList
 })(require('../../components/naturalfeatures/FeaturesPanel'));
@@ -40,12 +44,12 @@ const FilterElement = require('../../components/naturalfeatures/FilterElement');
 
 const resetFilters = resetFtFilters.bind(null, 'fungus');
 const upDateFeatureType = loadList.bind(null, 'fungus', 1);
+
 const FilterPanel = connect((state) => {
-    const data = dataFilterSelector(state);
-    const operator = state.featuresearch && state.featuresearch.defaultOperator;
+    const filters = dataFilterSelector(state);
+    const featuresInfo = dataSelector(state);
     return {
-        height: state.map && state.map.present && state.map.present.size && state.map.present.size.height || 600,
-        disableBtns: !FilterUtils.isFilterValid({operator, ...data})
+        disableSync: FilterUtils.equalFilters(filters, featuresInfo.filter)
     };
 }, {
     onReset: resetFilters,
@@ -76,6 +80,17 @@ const ReleasedFilter = connect((state) => {
     onChange: onReleasedChange
 })(require('../../components/naturalfeatures/CheckFilter'));
 
+const onNotReleasedChange = setFilterProp.bind(null, 'fungus', 'notreleased');
+
+const NotReleasedFilter = connect((state) => {
+    const data = dataFilterSelector(state);
+    return {
+        value: !!data.notreleased
+    };
+}, {
+    onChange: onNotReleasedChange
+})(require('../../components/naturalfeatures/CheckFilter'));
+
 const updateFieldValue = setFilterProp.bind(null, 'fungus');
 
 const DateFiled = connect((state) => {
@@ -89,13 +104,16 @@ const DateFiled = connect((state) => {
 })(require('../../components/naturalfeatures/DateFilter'));
 
 class Fungus extends React.Component {
+    static propTypes = {
+      height: React.PropTypes.number
+    }
     render() {
         return (
             <FeatureTypePanel featureType="fungus">
-                <FeaturesPanel>
+                <FeaturesPanel height={this.props.height}>
                     <FeatureCard/>
                 </FeaturesPanel>
-                <FilterPanel>
+                <FilterPanel height={this.props.height}>
                     <FilterElement label="by Species">
                         <SpeciesSelector/>
                     </FilterElement>
@@ -104,6 +122,7 @@ class Fungus extends React.Component {
                     </FilterElement>
                     <FilterElement label="by Properties">
                         <ReleasedFilter label="released"/>
+                        <NotReleasedFilter label="Not released"/>
                     </FilterElement>
                 </FilterPanel>
             </FeatureTypePanel>

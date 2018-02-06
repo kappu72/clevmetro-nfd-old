@@ -1,43 +1,43 @@
-from django.db.models.fields import BooleanField, TextField, CharField, DateTimeField,\
-    DateField, NullBooleanField
-from django.db.models.fields import IntegerField, DecimalField, FloatField
-from django.contrib.gis.db.models.fields import GeometryField, PolygonField
+from collections import OrderedDict
+from collections import Mapping
+import datetime as dt
+import logging
 
-from nfdcore.models import get_details_class, EarthwormEvidence, DisturbanceType,\
-    SlimeMoldLifestages, TaxonLocation, NaturalAreaLocation, ElementNaturalAreas
-
-from nfdcore.models import DictionaryTable
-from nfdcore.models import Voucher, OccurrenceTaxon, PlantDetails,\
-    StreamAnimalDetails, LandAnimalDetails, ElementSpecies, Species,\
-    PondLakeAnimalDetails, WetlandAnimalDetails, SlimeMoldDetails,\
-    OccurrenceNaturalArea, OccurrenceCategory, DictionaryTableExtended,\
-    Photograph, get_occurrence_model, TaxonDetails, ConiferDetails, FernDetails,\
-    FloweringPlantDetails, MossDetails, ConiferLifestages,\
-    WetlandVetegationStructure, StreamSubstrate
-from nfdcore.models import AnimalLifestages, OccurrenceObservation, PointOfContact
-from rest_framework.serializers import Serializer, ModelSerializer
-from django.db import models as db_models
-from rest_framework import fields as rest_fields
-from rest_framework import relations as rest_rels
-from rest_framework import serializers
-from collections import Mapping, OrderedDict
-from rest_framework.serializers import Field
-import reversion
-from reversion.models import Version
-from rest_framework.fields import empty, SerializerMethodField, ImageField
-from rest_framework_gis import serializers as gisserializer
-from django.db.models.fields import NOT_PROVIDED
-from rest_framework.exceptions import ValidationError
-from PIL import Image
-from nfdapi import settings
-import os
+from django.db.models.fields import (
+    BooleanField,
+    CharField,
+    DateTimeField,
+    DateField,
+    DecimalField,
+    IntegerField,
+    FloatField,
+    NullBooleanField,
+    TextField,
+    NOT_PROVIDED,
+)
+from django.db.models.query import QuerySet
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericRelation
-from django.db.models.query import QuerySet
-from django.template.context_processors import request
-from django.contrib.gis.geos import Point, Polygon
+from django.contrib.gis.geos import Polygon
+from django.contrib.gis.db.models.fields import GeometryField
+from django.contrib.gis.db.models.fields import PolygonField
+from django.template.defaultfilters import date
 
-def _(message): return message
+from rest_framework import serializers
+from rest_framework import fields as rest_fields
+from rest_framework_gis import serializers as gisserializer
+import reversion
+from reversion.models import Version
+from rest_framework.exceptions import ValidationError
+
+from . import models
+
+logger = logging.getLogger(__name__)
+
+
+def _(message):
+    return message
+
 
 """ -------------------------------------------
 UTILITY METHODS AND CLASSES
@@ -126,159 +126,177 @@ MANAGEMENT_FORM_ITEMS_PUBLISHER = [{
     
 
 LAND_ANIMAL_TYPE = [
-    (_('species'), Species, ['species.element_species']),
-    (_('species.element_species'), ElementSpecies, []),
-    (MANAGEMENT_FORM_NAME, OccurrenceTaxon, []),
-    (_('observation'), OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
-    (_('observation.reporter'), PointOfContact, []),
-    (_('observation.verifier'), PointOfContact, []),
-    (_('observation.recorder'), PointOfContact, []),
-    (_('voucher'), Voucher, []),
-    (_('details'), LandAnimalDetails, ['details.lifestages']),
-    (_('details.lifestages'), AnimalLifestages, []),
-    (_('location'), TaxonLocation, []),
+    (_('species'), models.Species, ['species.element_species']),
+    (_('species.element_species'), models.ElementSpecies, []),
+    (MANAGEMENT_FORM_NAME, models.OccurrenceTaxon, []),
+    (_('observation'), models.OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
+    (_('observation.reporter'), models.PointOfContact, []),
+    (_('observation.verifier'), models.PointOfContact, []),
+    (_('observation.recorder'), models.PointOfContact, []),
+    (_('voucher'), models.Voucher, []),
+    (_('details'), models.LandAnimalDetails, ['details.lifestages']),
+    (_('details.lifestages'), models.AnimalLifestages, []),
+    (_('location'), models.TaxonLocation, []),
     ]
 LAND_ANIMAL_TYPE_DICT = get_form_dict(LAND_ANIMAL_TYPE)
 
 STREAM_ANIMAL_TYPE = [
-    (_('species'), Species, ['species.element_species']),
-    (_('species.element_species'), ElementSpecies, []),
-    (MANAGEMENT_FORM_NAME, OccurrenceTaxon, []),
-    (_('observation'), OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
-    (_('observation.reporter'), PointOfContact, []),
-    (_('observation.verifier'), PointOfContact, []),
-    (_('observation.recorder'), PointOfContact, []),
-    (_('voucher'), Voucher, []),
-    (_('details'), StreamAnimalDetails, ['details.lifestages', 'details.substrate']),
-    (_('details.lifestages'), AnimalLifestages, []),
-    (_('details.substrate'), StreamSubstrate, []),
-    (_('location'), TaxonLocation, []),
+    (_('species'), models.Species, ['species.element_species']),
+    (_('species.element_species'), models.ElementSpecies, []),
+    (MANAGEMENT_FORM_NAME, models.OccurrenceTaxon, []),
+    (_('observation'), models.OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
+    (_('observation.reporter'), models.PointOfContact, []),
+    (_('observation.verifier'), models.PointOfContact, []),
+    (_('observation.recorder'), models.PointOfContact, []),
+    (_('voucher'), models.Voucher, []),
+    (_('details'), models.StreamAnimalDetails, ['details.lifestages', 'details.substrate']),
+    (_('details.lifestages'), models.AnimalLifestages, []),
+    (_('details.substrate'), models.StreamSubstrate, []),
+    (_('location'), models.TaxonLocation, []),
     ]
 
 STREAM_ANIMAL_TYPE_DICT = get_form_dict(STREAM_ANIMAL_TYPE)
 
 PONDLAKE_ANIMAL_TYPE = [
-    (_('species'), Species, ['species.element_species']),
-    (_('species.element_species'), ElementSpecies, []),
-    (MANAGEMENT_FORM_NAME, OccurrenceTaxon, []),
-    (_('observation'), OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
-    (_('observation.reporter'), PointOfContact, []),
-    (_('observation.verifier'), PointOfContact, []),
-    (_('observation.recorder'), PointOfContact, []),
-    (_('voucher'), Voucher, []),
-    (_('details'), PondLakeAnimalDetails, ['details.lifestages']),
-    (_('details.lifestages'), AnimalLifestages, []),
-    (_('location'), TaxonLocation, []),
+    (_('species'), models.Species, ['species.element_species']),
+    (_('species.element_species'), models.ElementSpecies, []),
+    (MANAGEMENT_FORM_NAME, models.OccurrenceTaxon, []),
+    (_('observation'), models.OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
+    (_('observation.reporter'), models.PointOfContact, []),
+    (_('observation.verifier'), models.PointOfContact, []),
+    (_('observation.recorder'), models.PointOfContact, []),
+    (_('voucher'), models.Voucher, []),
+    (_('details'), models.PondLakeAnimalDetails, ['details.lifestages']),
+    (_('details.lifestages'), models.AnimalLifestages, []),
+    (_('location'), models.TaxonLocation, []),
     ]
 PONDLAKE_ANIMAL_TYPE_DICT = get_form_dict(PONDLAKE_ANIMAL_TYPE)
 
 
 WETLAND_ANIMAL_TYPE = [
-    (_('species'), Species, ['species.element_species']),
-    (_('species.element_species'), ElementSpecies, []),
-    (MANAGEMENT_FORM_NAME, OccurrenceTaxon, []),
-    (_('observation'), OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
-    (_('observation.reporter'), PointOfContact, []),
-    (_('observation.verifier'), PointOfContact, []),
-    (_('observation.recorder'), PointOfContact, []),
-    (_('voucher'), Voucher, []),
-    (_('details'), WetlandAnimalDetails, ['details.lifestages', 'details.vegetation']),
-    (_('details.lifestages'), AnimalLifestages, []),
-    (_('details.vegetation'), WetlandVetegationStructure, []),
-    (_('location'), TaxonLocation, []),
+    (_('species'), models.Species, ['species.element_species']),
+    (_('species.element_species'), models.ElementSpecies, []),
+    (MANAGEMENT_FORM_NAME, models.OccurrenceTaxon, []),
+    (_('observation'), models.OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
+    (_('observation.reporter'), models.PointOfContact, []),
+    (_('observation.verifier'), models.PointOfContact, []),
+    (_('observation.recorder'), models.PointOfContact, []),
+    (_('voucher'), models.Voucher, []),
+    (_('details'), models.WetlandAnimalDetails, ['details.lifestages', 'details.vegetation']),
+    (_('details.lifestages'), models.AnimalLifestages, []),
+    (_('details.vegetation'), models.WetlandVetegationStructure, []),
+    (_('location'), models.TaxonLocation, []),
     ]
 WETLAND_ANIMAL_TYPE_DICT = get_form_dict(WETLAND_ANIMAL_TYPE)
 
 SLIMEMOLD_TYPE = [
-    (_('species'), Species, ['species.element_species']),
-    (_('species.element_species'), ElementSpecies, []),
-    (MANAGEMENT_FORM_NAME, OccurrenceTaxon, []),
-    (_('observation'), OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
-    (_('observation.reporter'), PointOfContact, []),
-    (_('observation.verifier'), PointOfContact, []),
-    (_('observation.recorder'), PointOfContact, []),
-    (_('voucher'), Voucher, []),
-    (_('details'), SlimeMoldDetails, ['details.lifestages']),
-    (_('details.lifestages'), SlimeMoldLifestages, []),
-    (_('location'), TaxonLocation, []),
+    (_('species'), models.Species, ['species.element_species']),
+    (_('species.element_species'), models.ElementSpecies, []),
+    (MANAGEMENT_FORM_NAME, models.OccurrenceTaxon, []),
+    (_('observation'), models.OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
+    (_('observation.reporter'), models.PointOfContact, []),
+    (_('observation.verifier'), models.PointOfContact, []),
+    (_('observation.recorder'), models.PointOfContact, []),
+    (_('voucher'), models.Voucher, []),
+    (_('details'), models.SlimeMoldDetails, ['details.lifestages']),
+    (_('details.lifestages'), models.SlimeMoldLifestages, []),
+    (_('location'), models.TaxonLocation, []),
     ]
 SLIMEMOLD_TYPE_DICT = get_form_dict(SLIMEMOLD_TYPE)
 
 CONIFER_PLANT_TYPE = [
-    (_('species'), Species, ['species.element_species']),
-    (_('species.element_species'), ElementSpecies, []),
-    (MANAGEMENT_FORM_NAME, OccurrenceTaxon, []),
-    (_('observation'), OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
-    (_('observation.reporter'), PointOfContact, []),
-    (_('observation.verifier'), PointOfContact, []),
-    (_('observation.recorder'), PointOfContact, []),
-    (_('voucher'), Voucher, []),
-    (_('details'), ConiferDetails, ['details.lifestages', 'details.earthworm_evidence', 'details.disturbance_type']),
-    (_('details.lifestages'), ConiferLifestages, []),
-    (_('details.earthworm_evidence'), EarthwormEvidence, []),
-    (_('details.disturbance_type'), DisturbanceType, []),
-    (_('location'), TaxonLocation, []),
+    (_('species'), models.Species, ['species.element_species']),
+    (_('species.element_species'), models.ElementSpecies, []),
+    (MANAGEMENT_FORM_NAME, models.OccurrenceTaxon, []),
+    (_('observation'), models.OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
+    (_('observation.reporter'), models.PointOfContact, []),
+    (_('observation.verifier'), models.PointOfContact, []),
+    (_('observation.recorder'), models.PointOfContact, []),
+    (_('voucher'), models.Voucher, []),
+    (_('details'), models.ConiferDetails, ['details.lifestages', 'details.earthworm_evidence', 'details.disturbance_type']),
+    (_('details.lifestages'), models.ConiferLifestages, []),
+    (_('details.earthworm_evidence'), models.EarthwormEvidence, []),
+    (_('details.disturbance_type'), models.DisturbanceType, []),
+    (_('location'), models.TaxonLocation, []),
     ]
 CONIFER_PLANT_TYPE_DICT = get_form_dict(CONIFER_PLANT_TYPE)
 
 FERN_PLANT_TYPE = [
-    (_('species'), Species, ['species.element_species']),
-    (_('species.element_species'), ElementSpecies, []),
-    (MANAGEMENT_FORM_NAME, OccurrenceTaxon, []),
-    (_('observation'), OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
-    (_('observation.reporter'), PointOfContact, []),
-    (_('observation.verifier'), PointOfContact, []),
-    (_('observation.recorder'), PointOfContact, []),
-    (_('voucher'), Voucher, []),
-    (_('details'), FernDetails, ['details.earthworm_evidence', 'details.disturbance_type']),
-    (_('details.earthworm_evidence'), EarthwormEvidence, []),
-    (_('details.disturbance_type'), DisturbanceType, []),
-    (_('location'), TaxonLocation, []),
+    (_('species'), models.Species, ['species.element_species']),
+    (_('species.element_species'), models.ElementSpecies, []),
+    (MANAGEMENT_FORM_NAME, models.OccurrenceTaxon, []),
+    (_('observation'), models.OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
+    (_('observation.reporter'), models.PointOfContact, []),
+    (_('observation.verifier'), models.PointOfContact, []),
+    (_('observation.recorder'), models.PointOfContact, []),
+    (_('voucher'), models.Voucher, []),
+    (_('details'), models.FernDetails, ['details.earthworm_evidence', 'details.disturbance_type']),
+    (_('details.earthworm_evidence'), models.EarthwormEvidence, []),
+    (_('details.disturbance_type'), models.DisturbanceType, []),
+    (_('location'), models.TaxonLocation, []),
     ]
 FERN_PLANT_TYPE_DICT = get_form_dict(FERN_PLANT_TYPE)
 
 FLOWERING_PLANT_TYPE = [
-    (_('species'), Species, ['species.element_species']),
-    (_('species.element_species'), ElementSpecies, []),
-    (MANAGEMENT_FORM_NAME, OccurrenceTaxon, []),
-    (_('observation'), OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
-    (_('observation.reporter'), PointOfContact, []),
-    (_('observation.verifier'), PointOfContact, []),
-    (_('observation.recorder'), PointOfContact, []),
-    (_('voucher'), Voucher, []),
-    (_('details'), FloweringPlantDetails, ['details.earthworm_evidence', 'details.disturbance_type']),
-    (_('details.earthworm_evidence'), EarthwormEvidence, []),
-    (_('details.disturbance_type'), DisturbanceType, []),
-    (_('location'), TaxonLocation, []),
+    (_('species'), models.Species, ['species.element_species']),
+    (_('species.element_species'), models.ElementSpecies, []),
+    (MANAGEMENT_FORM_NAME, models.OccurrenceTaxon, []),
+    (_('observation'), models.OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
+    (_('observation.reporter'), models.PointOfContact, []),
+    (_('observation.verifier'), models.PointOfContact, []),
+    (_('observation.recorder'), models.PointOfContact, []),
+    (_('voucher'), models.Voucher, []),
+    (_('details'), models.FloweringPlantDetails, ['details.earthworm_evidence', 'details.disturbance_type']),
+    (_('details.earthworm_evidence'), models.EarthwormEvidence, []),
+    (_('details.disturbance_type'), models.DisturbanceType, []),
+    (_('location'), models.TaxonLocation, []),
     ]
 FLOWERING_PLANT_TYPE_DICT = get_form_dict(FLOWERING_PLANT_TYPE)
 
 MOSS_PLANT_TYPE = [
-    (_('species'), Species, ['species.element_species']),
-    (_('species.element_species'), ElementSpecies, []),
-    (MANAGEMENT_FORM_NAME, OccurrenceTaxon, []),
-    (_('observation'), OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
-    (_('observation.reporter'), PointOfContact, []),
-    (_('observation.verifier'), PointOfContact, []),
-    (_('observation.recorder'), PointOfContact, []),
-    (_('voucher'), Voucher, []),
-    (_('details'), MossDetails, ['details.earthworm_evidence', 'details.disturbance_type']),
-    (_('details.earthworm_evidence'), EarthwormEvidence, []),
-    (_('details.disturbance_type'), DisturbanceType, []),
-    (_('location'), TaxonLocation, []),
+    (_('species'), models.Species, ['species.element_species']),
+    (_('species.element_species'), models.ElementSpecies, []),
+    (MANAGEMENT_FORM_NAME, models.OccurrenceTaxon, []),
+    (_('observation'), models.OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
+    (_('observation.reporter'), models.PointOfContact, []),
+    (_('observation.verifier'), models.PointOfContact, []),
+    (_('observation.recorder'), models.PointOfContact, []),
+    (_('voucher'), models.Voucher, []),
+    (_('details'), models.MossDetails, ['details.earthworm_evidence', 'details.disturbance_type']),
+    (_('details.earthworm_evidence'), models.EarthwormEvidence, []),
+    (_('details.disturbance_type'), models.DisturbanceType, []),
+    (_('location'), models.TaxonLocation, []),
     ]
 MOSS_PLANT_TYPE_DICT = get_form_dict(MOSS_PLANT_TYPE)
 
+FUNGUS_TYPE = [
+    (_('species'), models.Species, ['species.element_species']),
+    (_('species.element_species'), models.ElementSpecies, []),
+    (MANAGEMENT_FORM_NAME, models.OccurrenceTaxon, []),
+    (_('observation'), models.OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
+    (_('observation.reporter'), models.PointOfContact, []),
+    (_('observation.verifier'), models.PointOfContact, []),
+    (_('observation.recorder'), models.PointOfContact, []),
+    (_('voucher'), models.Voucher, []),
+    (_('details'), models.FungusDetails, ['details.earthworm_evidence', 'details.disturbance_type', 'details.other_observed_associations', 'details.fruiting_bodies_age']),
+    (_('details.earthworm_evidence'), models.EarthwormEvidence, []),
+    (_('details.disturbance_type'), models.DisturbanceType, []),
+    (_('details.other_observed_associations'), models.ObservedAssociations, []),
+    (_('details.fruiting_bodies_age'), models.FruitingBodiesAge, []),
+    (_('location'), models.TaxonLocation, []),
+    ]
+FUNGUS_TYPE_DICT = get_form_dict(FUNGUS_TYPE)
+
 NATURAL_AREA_TYPE = [
-    (_('element'), ElementNaturalAreas, ['element.earthworm_evidence', 'element.disturbance_type']),
-    (MANAGEMENT_FORM_NAME, OccurrenceTaxon, []),
-    (_('observation'), OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
-    (_('observation.reporter'), PointOfContact, []),
-    (_('observation.verifier'), PointOfContact, []),
-    (_('observation.recorder'), PointOfContact, []),
-    (_('element.earthworm_evidence'), EarthwormEvidence, []),
-    (_('element.disturbance_type'), DisturbanceType, []),
-    (_('location'), NaturalAreaLocation, []),
+    (_('element'), models.ElementNaturalAreas, ['element.earthworm_evidence', 'element.disturbance_type']),
+    (MANAGEMENT_FORM_NAME, models.OccurrenceTaxon, []),
+    (_('observation'), models.OccurrenceObservation, ['observation.reporter', 'observation.verifier', 'observation.recorder']),
+    (_('observation.reporter'), models.PointOfContact, []),
+    (_('observation.verifier'), models.PointOfContact, []),
+    (_('observation.recorder'), models.PointOfContact, []),
+    (_('element.earthworm_evidence'), models.EarthwormEvidence, []),
+    (_('element.disturbance_type'), models.DisturbanceType, []),
+    (_('location'), models.NaturalAreaLocation, []),
     ]
 NATURAL_AREA_TYPE_DICT = get_form_dict(NATURAL_AREA_TYPE)
 
@@ -295,11 +313,11 @@ def get_details_serializer(category_code):
     elif category_code=='fl':
         return FloweringPlantDetailsSerializer
     elif category_code=='pl':
-        return Serializer # FIXME
+        return serializers.Serializer # FIXME
     elif category_code=='mo':
         return MossDetailsSerializer
     elif category_code=='fu':
-        return Serializer # FIXME
+        return FungusDetailsSerializer
     elif category_code=='sl':
         return SlimeMoldDetailsSerializer
     elif category_code=='ln':
@@ -318,11 +336,11 @@ def is_deletable_field(f):
         return False
     if getattr(f, 'auto_created', False):
         return False
-    if issubclass(f.related_model, DictionaryTable):
+    if issubclass(f.related_model, models.DictionaryTable):
         return False
-    if issubclass(f.related_model, DictionaryTableExtended):
+    if issubclass(f.related_model, models.DictionaryTableExtended):
         return False
-    if issubclass(f.related_model, Species):
+    if issubclass(f.related_model, models.Species):
         return False
     return True
     
@@ -436,9 +454,9 @@ def get_serializer_fields(form_name, model):
             kwargs['allow_blank'] = getattr(f, 'blank', False)
             kwargs['allow_null'] = getattr(f, 'null', False)
             kwargs['required'] = not getattr(f, 'null', False)
-            if issubclass(f.related_model, DictionaryTable):
+            if issubclass(f.related_model, models.DictionaryTable):
                 fdef = DictionaryField(**kwargs)
-            elif issubclass(f.related_model, DictionaryTableExtended):
+            elif issubclass(f.related_model, models.DictionaryTableExtended):
                 fdef = DictionaryExtendedField(**kwargs)
         elif isinstance(f, GeometryField):
             # skip geoms
@@ -452,14 +470,14 @@ def get_serializer_fields(form_name, model):
     return result
 
 
-class OccurrenceRelatedObjectSerialzer(Serializer):
-    def __init__(self, instance=None, data=empty, model=None, **kwargs):
+class OccurrenceRelatedObjectSerialzer(serializers.Serializer):
+    def __init__(self, instance=None, data=rest_fields.empty, model=None, **kwargs):
         self._model = model
-        Serializer.__init__(self, instance=instance, data=data, **kwargs)
+        serializers.Serializer.__init__(self, instance=instance, data=data, **kwargs)
 
 
 def check_all_null(field_dict):
-    if field_dict is None or field_dict is empty:
+    if field_dict is None or field_dict is rest_fields.empty:
         return True
     for value in field_dict.values():
         if isinstance(value, dict):
@@ -495,7 +513,7 @@ class CustomModelSerializerMixin(object):
         """
         if field_name in info.relations:
             relation_info = info.relations[field_name]
-            if issubclass(relation_info.related_model, DictionaryTable):
+            if issubclass(relation_info.related_model, models.DictionaryTable):
                 f = DictionaryField
                 kwargs = {}
                 if relation_info.model_field.blank:
@@ -506,7 +524,7 @@ class CustomModelSerializerMixin(object):
                     kwargs["allow_null"] = True
                 
                 return f, kwargs
-            elif issubclass(relation_info.related_model, DictionaryTableExtended):
+            elif issubclass(relation_info.related_model, models.DictionaryTableExtended):
                 f = DictionaryExtendedField
                 kwargs = {}
                 if relation_info.model_field.blank:
@@ -518,7 +536,7 @@ class CustomModelSerializerMixin(object):
                 return f, kwargs
         return super(CustomModelSerializerMixin, self).build_field(field_name, info, model_class, nested_depth)
 
-    def run_validation(self, data=empty):
+    def run_validation(self, data=rest_fields.empty):
         """
         We override the default `run_validation`, because the validation
         performed by validators and the `.validate()` method should
@@ -544,7 +562,8 @@ def init_forms(instance, category_code):
             instance.forms = MOSS_PLANT_TYPE
             instance._form_dict = MOSS_PLANT_TYPE_DICT
         elif category_code=='fu':
-            return None #FIXME
+            instance.forms = FUNGUS_TYPE
+            instance._form_dict = FUNGUS_TYPE_DICT
         elif category_code=='sl':
             instance.forms = SLIMEMOLD_TYPE
             instance._form_dict = SLIMEMOLD_TYPE_DICT
@@ -565,7 +584,7 @@ def init_forms(instance, category_code):
             instance._form_dict = NATURAL_AREA_TYPE_DICT
 
 class UpdateOccurrenceMixin(object):
-    def __init__(self, instance=None, data=empty, is_writer=False, is_publisher=False, **kwargs):
+    def __init__(self, instance=None, data=rest_fields.empty, is_writer=False, is_publisher=False, **kwargs):
         self.is_writer = is_writer
         self.is_publisher = is_publisher
         if instance and instance.occurrence_cat:
@@ -620,7 +639,7 @@ class UpdateOccurrenceMixin(object):
                     if getattr(f, 'primary_key', False):
                         pass
                     elif getattr(f, 'related_model', False):
-                        if issubclass(f.related_model, DictionaryTable) or issubclass(f.related_model, DictionaryTableExtended):
+                        if issubclass(f.related_model, models.DictionaryTable) or issubclass(f.related_model, models.DictionaryTableExtended):
                             new_value = form_validated_data.get(f.name)
                             old_value =  getattr(instance, f.name, None)
                             if old_value != new_value and (old_value is None or new_value != old_value.code):
@@ -745,28 +764,63 @@ class UpdateOccurrenceMixin(object):
         """
         return self.forms
     
+    def process_photos(self, instance, validated_data):
+        images = validated_data.get('images')
+        if images:
+            try:
+                updated_ids = [i.get('id') for i in images]
+                instance.photographs.exclude(pk__in=updated_ids).delete()
+                
+                for photo_data in validated_data.get('images'):
+                    try:
+                        photo = models.Photograph.objects.get(pk=photo_data.get('id'))
+                    except:
+                        if Version.objects.get_for_object_reference(models.Photograph, photo_data.get('id')).count() > 0:
+                            # we are restoring a removed photo
+                            last_version = Version.objects.get_for_object_reference(models.Photograph, photo_data.get('id'))[0]
+                            # ensure the photo matches current instance
+                            if last_version.field_dict.get('occurrence_fk') != instance.id:
+                                raise ValidationError({"images": [_("Tried to restore an invalid image")]})
+                            if last_version.field_dict.get('content_type_id') != ContentType.objects.get_for_model(instance._meta.model).pk:
+                                raise ValidationError({"images": [_("Tried to restore an invalid image")]})
+                            last_version.revert()
+                            photo = models.Photograph.objects.get(pk=photo_data.get('id'))
+                    updated = False
+                    if not photo.occurrence:
+                        photo.occurrence = instance
+                        updated = True
+                    elif photo.occurrence != instance:
+                        raise ValidationError({"images": [_("Invalid images were specified")]})
+                    notes = photo_data.get('notes')
+                    if photo.notes != notes:
+                        photo.notes = notes
+                        updated = True
+                    desc = photo_data.get('description')
+                    if photo.description != desc:
+                        photo.description = desc
+                        updated = True
+                    if updated:
+                        photo.save()
+            except ValidationError:
+                raise
+            except:
+                raise ValidationError({"images": [_("Invalid images were specified")]})
+        else:
+            instance.photographs.all().delete()
+
     def update(self, instance, validated_data):
         with reversion.create_revision():
             for (form_name, model_class, children) in self.get_toplevel_forms():
                 if form_name == 'species':
                     try:
                         species_id = validated_data['species']['id']
-                        selected_species = Species.objects.get(pk=species_id)
+                        selected_species = models.Species.objects.get(pk=species_id)
                         instance.species = selected_species
-                        self._update_form('species', Species, validated_data, instance)
-                        self._update_form('species.element_species', ElementSpecies, validated_data, selected_species)
                     except:
                         raise ValidationError({"species": [_("No species was selected")]})
                 elif form_name != MANAGEMENT_FORM_NAME:
                     self._update_form(form_name, model_class, validated_data, instance, children)
-            
-            if isinstance(instance, OccurrenceTaxon):
-                # taxon
-                pass
-            else:
-                # natural area
-                pass
-
+           
             instance.geom = validated_data.get("geom") or instance.geom
             instance.version = instance.version + 1
             instance.verified = validated_data.get("verified", False) or False
@@ -777,15 +831,17 @@ class UpdateOccurrenceMixin(object):
             else:
                 instance.released = False
             instance.save()
+            # ensure the instance has been saved before associating photos
+            self.process_photos(instance, validated_data)
         return instance
     
     def create(self, validated_data):
         code = validated_data.get('featuresubtype')
         if code == 'na':
-            instance = OccurrenceNaturalArea()
+            instance = models.OccurrenceNaturalArea()
         else:
-            instance = OccurrenceTaxon()
-        instance.occurrence_cat = OccurrenceCategory.objects.get(code=code)
+            instance = models.OccurrenceTaxon()
+        instance.occurrence_cat = models.OccurrenceCategory.objects.get(code=code)
         instance.geom = validated_data.get('geom')
         init_forms(self, instance.occurrence_cat.code)
         return self.update(instance, validated_data)
@@ -794,18 +850,25 @@ class UpdateOccurrenceMixin(object):
 """ -------------------------------------------
 MODEL SERIALIZERs
 ---------------------------------------------- """
-class VoucherSerializer(CustomModelSerializerMixin, ModelSerializer):
+class VoucherSerializer(CustomModelSerializerMixin,
+                        serializers.ModelSerializer):
     class Meta:
-        model = Voucher
+        model = models.Voucher
         exclude = ('id',)
 
-class ElementSpeciesSerializer(CustomModelSerializerMixin,ModelSerializer):
+class ElementSpeciesSerializer(CustomModelSerializerMixin,
+                               serializers.ModelSerializer):
     class Meta:
-        model = ElementSpecies
+        model = models.ElementSpecies
         exclude = ('id',)
-        
-class SpeciesSerializer(CustomModelSerializerMixin,ModelSerializer):
-    element_species = ElementSpeciesSerializer(required=False)
+        read_only_fields = ("native", "oh_status", "usfws_status", "iucn_red_list_category", \
+                            "other_code", "ibp_english", "ibp_scientific", "bblab_number", "nrcs_usda_symbol", \
+                            "synonym_nrcs_usda_symbol", "epa_numeric_code", "mushroom_group", \
+                            "cm_status", "s_rank", "n_rank", "g_rank")
+
+class SpeciesSerializer(CustomModelSerializerMixin,
+                        serializers.ModelSerializer):
+    element_species = ElementSpeciesSerializer(required=False, read_only=True)
     
     def to_internal_value(self, data):
         result = super(SpeciesSerializer, self).to_internal_value(data)
@@ -815,31 +878,35 @@ class SpeciesSerializer(CustomModelSerializerMixin,ModelSerializer):
         return result
     
     class Meta:
-        model = Species
+        model = models.Species
         fields = "__all__"
+        read_only_fields = ("first_common", "name_sci", "tsn", "synonym", "second_common", "third_common", "family", "family_common", "phylum", "phylum_common")
 
-class PointOfContactSerializer(CustomModelSerializerMixin, ModelSerializer):
+class PointOfContactSerializer(CustomModelSerializerMixin,
+                               serializers.ModelSerializer):
         
     class Meta:
-        model = PointOfContact
+        model = models.PointOfContact
         exclude = ('id',)
 
-class OccurrenceObservationSerializer(CustomModelSerializerMixin, ModelSerializer):
+class OccurrenceObservationSerializer(CustomModelSerializerMixin,
+                                      serializers.ModelSerializer):
     reporter = PointOfContactSerializer(required=True)
     recorder = PointOfContactSerializer(required=False)
     verifier = PointOfContactSerializer(required=False)
         
     class Meta:
-        model = OccurrenceObservation
+        model = models.OccurrenceObservation
         exclude = ('id',)
 
 
-class AnimalLifestagesSerializer(CustomModelSerializerMixin, ModelSerializer):
+class AnimalLifestagesSerializer(CustomModelSerializerMixin,
+                                 serializers.ModelSerializer):
     class Meta:
-        model = AnimalLifestages
+        model = models.AnimalLifestages
         exclude = ('id',)
 
-class BaseDetailsSerializer(ModelSerializer):
+class BaseDetailsSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         if instance:
             #self.set_model_class(instance.occurrencetaxon.get_details_class())
@@ -849,54 +916,59 @@ class BaseDetailsSerializer(ModelSerializer):
 class LandAnimalDetailsSerializer(CustomModelSerializerMixin, BaseDetailsSerializer):
     lifestages = AnimalLifestagesSerializer(required=False)
     class Meta:
-        model = LandAnimalDetails
+        model = models.LandAnimalDetails
         exclude = ('id',)
 
-class WetlandVetegationStructureSerializer(CustomModelSerializerMixin, ModelSerializer):
+class WetlandVetegationStructureSerializer(CustomModelSerializerMixin,
+                                           serializers.ModelSerializer):
     class Meta:
-        model = WetlandVetegationStructure
+        model = models.WetlandVetegationStructure
         exclude = ('id',)
 
 class WetlandAnimalDetailsSerializer(CustomModelSerializerMixin, BaseDetailsSerializer):
     lifestages = AnimalLifestagesSerializer(required=False)
     vegetation = WetlandVetegationStructureSerializer(required=False)
     class Meta:
-        model = WetlandAnimalDetails
+        model = models.WetlandAnimalDetails
         exclude = ('id',)
 
 
-class StreamSubstrateSerializer(CustomModelSerializerMixin, ModelSerializer):
+class StreamSubstrateSerializer(CustomModelSerializerMixin,
+                                serializers.ModelSerializer):
     class Meta:
-        model = StreamSubstrate
+        model = models.StreamSubstrate
         exclude = ('id',)
 
 class StreamAnimalDetailsSerializer(CustomModelSerializerMixin, BaseDetailsSerializer):
     lifestages = AnimalLifestagesSerializer(required=False)
     substrate = StreamSubstrateSerializer(required=False)
     class Meta:
-        model = StreamAnimalDetails
+        model = models.StreamAnimalDetails
         exclude = ('id',)
 
 class PondLakeAnimalDetailsSerializer(CustomModelSerializerMixin, BaseDetailsSerializer):
     lifestages = AnimalLifestagesSerializer(required=False)
     class Meta:
-        model = PondLakeAnimalDetails
+        model = models.PondLakeAnimalDetails
         exclude = ('id',)
 
-class ConiferLifestagesSerializer(CustomModelSerializerMixin, ModelSerializer):
+class ConiferLifestagesSerializer(CustomModelSerializerMixin,
+                                  serializers.ModelSerializer):
     class Meta:
-        model = ConiferLifestages
+        model = models.ConiferLifestages
         exclude = ('id',)
 
 
-class DisturbanceTypeSerializer(CustomModelSerializerMixin, ModelSerializer):
+class DisturbanceTypeSerializer(CustomModelSerializerMixin,
+                                serializers.ModelSerializer):
     class Meta:
-        model = DisturbanceType
+        model = models.DisturbanceType
         exclude = ('id',)
 
-class EarthwormEvidenceSerializer(CustomModelSerializerMixin, ModelSerializer):
+class EarthwormEvidenceSerializer(CustomModelSerializerMixin,
+                                  serializers.ModelSerializer):
     class Meta:
-        model = EarthwormEvidence
+        model = models.EarthwormEvidence
         exclude = ('id',)
 
 class ConiferDetailsSerializer(CustomModelSerializerMixin, BaseDetailsSerializer):
@@ -905,7 +977,7 @@ class ConiferDetailsSerializer(CustomModelSerializerMixin, BaseDetailsSerializer
     earthworm_evidence = EarthwormEvidenceSerializer(required=False)
     
     class Meta:
-        model = ConiferDetails
+        model = models.ConiferDetails
         exclude = ('id',)
 
 class FernDetailsSerializer(CustomModelSerializerMixin, BaseDetailsSerializer):
@@ -913,7 +985,7 @@ class FernDetailsSerializer(CustomModelSerializerMixin, BaseDetailsSerializer):
     earthworm_evidence = EarthwormEvidenceSerializer(required=False)
     #lifestages = FernLifestages(required=False) # FIXME
     class Meta:
-        model = FernDetails
+        model = models.FernDetails
         exclude = ('id',)
 
 class FloweringPlantDetailsSerializer(CustomModelSerializerMixin, BaseDetailsSerializer):
@@ -921,7 +993,7 @@ class FloweringPlantDetailsSerializer(CustomModelSerializerMixin, BaseDetailsSer
     earthworm_evidence = EarthwormEvidenceSerializer(required=False)
     #lifestages = FloweringPlantLifestages(required=False) # FIXME
     class Meta:
-        model = FloweringPlantDetails
+        model = models.FloweringPlantDetails
         exclude = ('id',)
     
 class MossDetailsSerializer(CustomModelSerializerMixin, BaseDetailsSerializer):
@@ -929,19 +1001,41 @@ class MossDetailsSerializer(CustomModelSerializerMixin, BaseDetailsSerializer):
     earthworm_evidence = EarthwormEvidenceSerializer(required=False)
     #lifestages = MossLifestages(required=False) # FIXME
     class Meta:
-        model = MossDetails
+        model = models.MossDetails
         exclude = ('id',)
 
 
-class SlimeMoldLifestagesSerializer(CustomModelSerializerMixin, ModelSerializer):
+class SlimeMoldLifestagesSerializer(CustomModelSerializerMixin,
+                                    serializers.ModelSerializer):
     class Meta:
-        model = SlimeMoldLifestages
+        model = models.SlimeMoldLifestages
         exclude = ('id',)
 
 class SlimeMoldDetailsSerializer(CustomModelSerializerMixin, BaseDetailsSerializer):
     lifestages = SlimeMoldLifestagesSerializer(required=False)
     class Meta:
-        model = SlimeMoldDetails
+        model = models.SlimeMoldDetails
+        exclude = ('id',)
+
+class FruitingBodiesAgeSerializer(CustomModelSerializerMixin,
+                                  serializers.ModelSerializer):
+    class Meta:
+        model = models.FruitingBodiesAge
+        exclude = ('id',)
+
+class ObservedAssociationsSerializer(CustomModelSerializerMixin,
+                                     serializers.ModelSerializer):
+    class Meta:
+        model = models.ObservedAssociations
+        exclude = ('id',)
+    
+class FungusDetailsSerializer(CustomModelSerializerMixin, BaseDetailsSerializer):
+    disturbance_type = DisturbanceTypeSerializer(required=False)
+    earthworm_evidence = EarthwormEvidenceSerializer(required=False)
+    fruiting_bodies_age = FruitingBodiesAgeSerializer(required=False)
+    other_observed_associations = ObservedAssociationsSerializer(required=False)
+    class Meta:
+        model = models.FungusDetails
         exclude = ('id',)
 
 
@@ -949,67 +1043,55 @@ class SlimeMoldDetailsSerializer(CustomModelSerializerMixin, BaseDetailsSerializ
 PHOTOGRAPHS
 ------------------------------------------------ """
 
-class PhotographPublishSerializer(Serializer):
+class PhotographPublishSerializer(serializers.Serializer):
     """
     Used to publish new photographs
     """ 
     image = serializers.ListField(
-        child=ImageField(max_length=1000,
+        child=rest_fields.ImageField(max_length=1000,
             allow_empty_file=False,
             use_url=True))
-    featuretype = rest_fields.CharField()
-    occurrence_fk = rest_fields.IntegerField()
-    image_id = rest_fields.IntegerField(required=False, read_only=True)
+    id = rest_fields.IntegerField(required=False, read_only=True)
     thumbnail = rest_fields.CharField(required=False, read_only=True)
     description = rest_fields.CharField(required=False, allow_blank=True)
     notes = rest_fields.CharField(required=False, allow_blank=True)
-    
-    def validate(self, data):
-        try:
-            ft = data.get("featuretype")
-            fk = data.get("occurrence_fk")
-            ft_model = get_occurrence_model(ft)
-            ft_model.objects.get(pk=fk)
-        except:
-            raise serializers.ValidationError(_("occurrence_fk: Not a valid occurrence"))
-        return data
-                      
+               
     class Meta:
-        model = Photograph
+        model = models.Photograph
         fields = ('image', 'featuretype', 'occurrence_fk')
+
+    def to_representation(self, instance):
+        return instance
+
 
     def create(self, validated_data):
         image=validated_data.pop('image')
-        ft = validated_data.pop("featuretype")
-        ft_model = get_occurrence_model(ft)
-        content_type = ContentType.objects.get_for_model(ft_model)
-        response = {
-            "image": [],
-            "featuretype": ft,
-            "occurrence_fk": validated_data.get("occurrence_fk")
-            }
+        image_list = []
         for img in image:
-            photo = Photograph.objects.create(image=img, content_type_id=content_type.id, **validated_data)
-            #photo.thumbnail = create_thumbnail(img, photo.image.path)
-            response['image'].append(photo.image)
-        if len(response['image'])==1:
-            response['image_id'] = photo.id
-            response['thumbnail'] = photo.thumbnail.url
-        return response
+            photo = models.Photograph.objects.create(image=img, **validated_data)
+            img_desc = {
+                'image': photo.image.url,
+                'id': photo.id
+                }
+            if photo.thumbnail:
+                img_desc['thumbnail'] = photo.thumbnail.url
+            image_list.append(img_desc)
+        return {'images': image_list}
 
-class PhotographSerializer(ModelSerializer):
+class PhotographSerializer(serializers.ModelSerializer):
     """
     Used to list photographs
     """
     class Meta:
-        model = Photograph
+        model = models.Photograph
         fields = '__all__'
+        read_only_fields = ('image', 'thumbnail', 'image_width', 'image_height','thumb_width', 'thumb_height', 'date')
         #exclude = ('occurrence_fk', 'occurrence', 'content_type') 
 
 """ -------------------------------------------
 OCCURRENCE SERIALIZER
 ---------------------------------------------- """
-class OccurrenceSerializer(UpdateOccurrenceMixin, Serializer):
+class OccurrenceSerializer(UpdateOccurrenceMixin, serializers.Serializer):
     """
     Manages serialization/deserialization of Occurrences
     """
@@ -1022,12 +1104,13 @@ class OccurrenceSerializer(UpdateOccurrenceMixin, Serializer):
     total_versions = TotalVersionsField(required=False, read_only=True)
     inclusion_date = rest_fields.DateTimeField(required=False, read_only=True)
     version_date = rest_fields.DateTimeField(required=False, read_only=True)
-    #geom = gisserializer.GeometryField()
+    geom = gisserializer.GeometryField(required=False)
     polygon = gisserializer.GeometryField(required=False)
     observation = OccurrenceObservationSerializer(required=True)
+    images = PhotographSerializer(required=False, many=True)
     
     def get_fields(self):
-        fields = Serializer.get_fields(self)
+        fields = serializers.Serializer.get_fields(self)
         
         if self.instance and self.instance.occurrence_cat:
             self.featuresubtype = self.instance.occurrence_cat.code
@@ -1036,10 +1119,10 @@ class OccurrenceSerializer(UpdateOccurrenceMixin, Serializer):
         return fields
     
     def to_representation(self, instance):
-        if isinstance(instance, OccurrenceTaxon):
+        if isinstance(instance, models.OccurrenceTaxon):
             details_name = instance.get_details_class().__name__.lower()
             setattr(instance, details_name, instance.get_details())
-        r = Serializer.to_representation(self, instance)
+        r = serializers.Serializer.to_representation(self, instance)
 
         result = to_flat_representation(r)
         result["id"] = r["id"]
@@ -1057,6 +1140,7 @@ class OccurrenceSerializer(UpdateOccurrenceMixin, Serializer):
         result['images'] = photo_serializer.data
         result['is_writer'] = self.is_writer
         result['is_publisher'] = self.is_publisher
+        result['geom'] = instance.geom.geojson
         if instance.location and isinstance(instance.location.polygon, Polygon):
             result['polygon'] = instance.location.polygon.geojson
         return result
@@ -1104,7 +1188,7 @@ class OccurrenceSerializer(UpdateOccurrenceMixin, Serializer):
 
         for field in fields: # validate values
             validate_method = getattr(self, 'validate_' + field.field_name, None)
-            if isinstance(field, ModelSerializer):
+            if isinstance(field, serializers.ModelSerializer):
                 primitive_value = field.get_value(formvalues)
                 if check_all_null(primitive_value) and not field.required:
                     continue
@@ -1123,11 +1207,11 @@ class OccurrenceSerializer(UpdateOccurrenceMixin, Serializer):
             else:
                 rest_fields.set_value(validated_formvalues, field.source_attrs, validated_value)
 
-        validated_formvalues = validated_formvalues
         validated_formvalues["released"] = data.get("released", False)
         validated_formvalues["verified"] = data.get("verified", False)
         validated_formvalues['featuretype'] = data.get("featuretype")
         validated_formvalues['featuresubtype'] = data.get("featuresubtype")
+        validated_formvalues['images'] = formvalues.get('images')
             
         if isinstance(validated_formvalues.get('polygon'), Polygon):
             location = validated_formvalues.get('location', {})
@@ -1146,25 +1230,28 @@ class OccurrenceSerializer(UpdateOccurrenceMixin, Serializer):
 
         return validated_formvalues
 
-class TaxonLocationSerializer(CustomModelSerializerMixin, ModelSerializer):
+class TaxonLocationSerializer(CustomModelSerializerMixin,
+                              serializers.ModelSerializer):
     class Meta:
-        model = TaxonLocation
+        model = models.TaxonLocation
         exclude = ('id', 'polygon')
 
-class NaturalAreaElementSerializer(CustomModelSerializerMixin, ModelSerializer):
+class NaturalAreaElementSerializer(CustomModelSerializerMixin,
+                                   serializers.ModelSerializer):
     disturbance_type = DisturbanceTypeSerializer(required=False)
     earthworm_evidence = EarthwormEvidenceSerializer(required=False)
     #lifestages = MossLifestages(required=False) # FIXME
     class Meta:
-        model = ElementNaturalAreas
+        model = models.ElementNaturalAreas
         exclude = ('id',)
 
-class NaturalAreaLocationSerializer(CustomModelSerializerMixin, ModelSerializer):
+class NaturalAreaLocationSerializer(CustomModelSerializerMixin,
+                                    serializers.ModelSerializer):
     class Meta:
-        model = NaturalAreaLocation
+        model = models.NaturalAreaLocation
         exclude = ('id', 'polygon')
 
-class TaxonOccurrenceSerializer(OccurrenceSerializer, Serializer):
+class TaxonOccurrenceSerializer(OccurrenceSerializer):
     species = SpeciesSerializer(required=False)
     voucher = VoucherSerializer(required=False)
     location = TaxonLocationSerializer(required=False)
@@ -1174,7 +1261,7 @@ class TaxonOccurrenceSerializer(OccurrenceSerializer, Serializer):
         if not species_id:
             errors["species"] = [_("No species was selected")]
 
-class NaturalAreaOccurrenceSerializer(OccurrenceSerializer, Serializer):
+class NaturalAreaOccurrenceSerializer(OccurrenceSerializer):
     element = NaturalAreaElementSerializer(required=False)
     location = NaturalAreaLocationSerializer(required=False)
     
@@ -1215,7 +1302,7 @@ class LayerSerializer(gisserializer.GeoFeatureModelSerializer):
         return result
     
     class Meta:
-        model = OccurrenceTaxon
+        model = models.OccurrenceTaxon
         geo_field = "geom"
         fields = ('id', 'featuretype', 'featuresubtype', 'inclusion_date', 'released', 'verified', 'version', 'total_versions')
 
@@ -1235,7 +1322,7 @@ class ListSerializer(gisserializer.GeoFeatureModelSerializer):
     
     
     class Meta:
-        model = OccurrenceTaxon
+        model = models.OccurrenceTaxon
         geo_field = "geom"
         fields = ('id', 'featuretype', 'featuresubtype', 'inclusion_date', 'released', 'verified', 'version', 'total_versions')
 
@@ -1275,10 +1362,11 @@ class NaturalAreaListSerializer(ListSerializer):
         result['verified'] = instance.verified
         result['inclusion_date'] = instance.inclusion_date
         result['id'] = instance.id
-        result['natural_area_element.id'] = instance.natural_area_element.id
-        result['natural_area_element.general_description'] = instance.natural_area_element.general_description
-        result['natural_area_element.type'] = instance.natural_area_element.type
-        result['natural_area_element.natural_area_code_nac'] = instance.natural_area_element.natural_area_code_nac
+        if instance.element:
+            result['element.id'] = instance.element.id
+            result['element.general_description'] = instance.element.general_description
+            result['element.type'] = instance.element.type
+            result['element.natural_area_code_nac'] = instance.element.natural_area_code_nac
         result['observation.observation_date'] = instance.observation.observation_date
         return result
 
@@ -1303,7 +1391,11 @@ class FeatureTypeSerializer():
             form_name = formdef[0]
             form['formlabel'] = _(form_name)
             form['formname'] = form_name
-            if form_name != MANAGEMENT_FORM_NAME:
+            if 'species' == form_name:
+                form['formitems'] = self.get_form_featuretype(form_name, formdef[1], SpeciesSerializer())
+            elif 'species.element_species' == form_name:
+                form['formitems'] = self.get_form_featuretype(form_name, formdef[1], ElementSpeciesSerializer())
+            elif form_name != MANAGEMENT_FORM_NAME:
                 form['formitems'] = self.get_form_featuretype(form_name, formdef[1])
             else:
                 if self.is_publisher:
@@ -1314,8 +1406,9 @@ class FeatureTypeSerializer():
         result['forms'] = forms
         return result
 
-    def get_form_featuretype(self, form_name, model):
+    def get_form_featuretype(self, form_name, model, model_serializer=None):
         fields = model._meta.get_fields()
+        model_fields = model_serializer.get_fields() if model_serializer else {}
         result = []
         for f in fields:
             fdef = {}
@@ -1341,7 +1434,7 @@ class FeatureTypeSerializer():
             elif isinstance(f, IntegerField):
                 fdef['type'] = 'integer'
             elif getattr(f, 'related_model', False):
-                if issubclass(f.related_model, DictionaryTable) or issubclass(f.related_model, DictionaryTableExtended):
+                if issubclass(f.related_model, models.DictionaryTable) or issubclass(f.related_model, models.DictionaryTableExtended):
                     fdef['type'] = 'stringcombo'
                     items = []
                     for item in f.related_model.objects.all():
@@ -1355,14 +1448,18 @@ class FeatureTypeSerializer():
                     pass
                 
             if 'type' in fdef:
-                fdef['mandatory'] = (not getattr(f, "null", True) and not getattr(f, "blank", True))
+                mfield = model_fields.get(f.name)
+                if mfield:
+                    fdef['readonly'] = getattr(mfield, "read_only", False)
+                    fdef['mandatory'] = (not getattr(mfield, "allo_null", True) and not getattr(mfield, "allow_blank", True))
+                else:
+                    fdef['mandatory'] = (not getattr(f, "null", True) and not getattr(f, "blank", True))
                 if not (self.is_writer or self.is_publisher):
                     fdef['readonly'] = True
                 fdef['key'] = form_name + "." + f.name
                 fdef['label'] = _(f.name)
                 result.append(fdef)
         return result
-
 
 class OccurrenceVersionSerializer():
     def is_related_field(self, f):
@@ -1373,9 +1470,9 @@ class OccurrenceVersionSerializer():
         return True
     
     def is_dict_model(self, related_model):
-        if issubclass(related_model, DictionaryTable):
+        if issubclass(related_model, models.DictionaryTable):
             return True
-        if issubclass(related_model, DictionaryTableExtended):
+        if issubclass(related_model, models.DictionaryTableExtended):
             return True
         return False
     
@@ -1410,11 +1507,21 @@ class OccurrenceVersionSerializer():
         #    pass
     
     def get_instance_model(self, parent_instance, model):
-        if issubclass(model, TaxonDetails):
+        if issubclass(model, models.TaxonDetails):
             category_code = parent_instance.get('occurrence_cat')
-            category = OccurrenceCategory.objects.get(code=category_code)
-            return get_details_class(category.code)
+            category = models.OccurrenceCategory.objects.get(code=category_code)
+            return models.get_details_class(category.code)
         return model 
+    
+    def get_images(self, requested_version):
+        versioned_photos = []
+        for version in requested_version.revision.version_set.all():
+            if isinstance(version._object_version.object, models.Photograph):
+                versioned_photos.append(version._object_version.object)
+                
+        photo_serializer = PhotographSerializer(versioned_photos, many=True)
+        return photo_serializer.data
+        
     
     def get_version(self, instance, version, exclude_unreleased=False):
         """
@@ -1445,6 +1552,9 @@ class OccurrenceVersionSerializer():
         if result.get('location') and isinstance(result.get('location').get('polygon'), Polygon):
             result['polygon'] = result.get('location').pop('polygon').geojson
         result['geom'] = {'type': 'Point', 'coordinates': result['geom'].coords}
+        
+        images = self.get_images(requested_version)
+        result['images'] = images
         result['total_versions'] = total_versions
         result['version'] = version
         result['version_date'] = revision_date
@@ -1453,24 +1563,73 @@ class OccurrenceVersionSerializer():
 """ -------------------------------------------
 SPECIES SEARCH
 ---------------------------------------------- """
-class SpeciesSearchSerializer(ModelSerializer):
-    name = SerializerMethodField()
+class SpeciesSearchSerializer(serializers.ModelSerializer):
+    name = rest_fields.SerializerMethodField()
 
     def get_name(self, obj):
         return '{} - {}'.format(obj.first_common, obj.name_sci) 
     
     class Meta:
-        model = Species
+        model = models.Species
         fields = ('id', 'name')
 
-class SpeciesSearchResultSerializer(ModelSerializer):
+class SpeciesSearchResultSerializer(serializers.ModelSerializer):
     element_species = ElementSpeciesSerializer(required=False)
     
     class Meta:
-        model = Species
+        model = models.Species
         fields = "__all__"
         
     def to_representation(self, instance):
         r = super(SpeciesSearchResultSerializer, self).to_representation(instance)
         return to_flat_representation(r, 'species')
 
+
+class OccurrenceAggregatorSerializer(serializers.BaseSerializer):
+
+    def to_representation(self, instance):
+        filterer = self.context["filterer"]
+        result = {
+            "total_occurrences": 0,
+            "title": self.context.get("title", ""),
+            "items": [],
+        }
+        year = filterer.get_field_by_name("year")
+        if year.value is not None:
+            result["year"] = year.value
+        if filterer.split_by_month:
+            entries = self.group_months(
+                instance,
+                filterer.get_field_by_name(filterer.aggregate_by).lookup,
+            )
+        else:
+            entries = instance
+        for entry in entries:
+            item = {}
+            for lookup, value in entry.iteritems():
+                if lookup == "num_occurrences":
+                    item["occurrences"] = value
+                    result["total_occurrences"] += value
+                elif lookup == "months":
+                    item["months"] = value
+                    result["total_occurrences"] += sum(value.values())
+                else:
+                    field = filterer.get_field_by_lookup(lookup)
+                    item[field.name] = value
+            result["items"].append(item)
+        return result
+
+    def group_months(self, entries, entry_id_key):
+        grouped_entries = {}
+        initial_months = [  # here we care about months, year is irrelevant
+            (date(dt.datetime(2000, i, 1), "F"), 0) for i in range(1, 13)]
+        for entry in entries:
+            entry_id = entry[entry_id_key]
+            new_entry = grouped_entries.setdefault(
+                entry_id, {"months": OrderedDict(initial_months)})
+            month_name = date(entry["month"], "F")
+            new_entry["months"][month_name] = entry["num_occurrences"]
+            for k, v in entry.items():
+                if k not in ("month", "num_occurrences"):
+                    new_entry[k] = v
+        return grouped_entries.values()

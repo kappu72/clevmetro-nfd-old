@@ -4,6 +4,8 @@
     font-size: 26px;
     padding: 0px 5px;
     margin-bottom: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .lists-container .tab-content{
     padding-top: 10px;
@@ -34,6 +36,13 @@
     font-weight: normal;
     cursor: pointer;
     background-color: #fff;
+}
+.nfd-panel-export{
+    position: absolute;
+    right: 2px;
+    font-size: 20px;
+    cursor: pointer;
+    margin-top: 14px;
 }
 
 .lists-container .panel-title{
@@ -80,7 +89,6 @@
     margin-bottom: 4px;
 }
 .nfd-list-item:hover{
-
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.24);
 }
 .list-item-btn {
@@ -136,4 +144,238 @@ box-shadow: 0 3px 6px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.24);
     position: absolute;
     right: 10px;
     top: 12px;
+}
+// feature type map icon
+
+@plant-color:#37ca28;
+@animal-color:#9e25ca;
+@fungus-color:#c9b926;
+@naturalarea-color:#2880c9;
+@slimemold-color:#28c1ca;
+
+[class^="leaflet-marker-icon marker-"]{
+    background-size: 30px 30px;
+}
+.nfd-legend div[class^="marker-"]{
+    height: 30px;
+    background-size: 30px 30px;
+    background-repeat: no-repeat;
+}
+.marker-plant{
+    background-image: url(../../img/tree-b.svg);
+}
+.marker-plant-h {
+    background-image: url(../../img/tree-h.svg);
+}
+.marker-cluster-plant {
+    background-color: lighten(@plant-color, 40%);
+}
+.marker-cluster-plant div {
+    background-color: @plant-color;
+}
+
+.marker-fungus{
+    background-image: url(../../img/mushroom-b.svg);
+}
+.marker-fungus-h {
+    background-image: url(../../img/mushroom-h.svg);
+}
+.marker-cluster-fungus {
+    background-color: lighten(@fungus-color, 40%);
+}
+.marker-cluster-fungus div {
+    background-color: @fungus-color;
+}
+.marker-animal {
+    background-image: url(../../img/animal-b.svg);
+}
+.marker-animal-h {
+    background-image: url(../../img/animal-h.svg);
+}
+.marker-cluster-animal {
+    background-color: lighten(@animal-color, 40%);
+}
+.marker-cluster-animal div {
+    background-color: @animal-color;
+}
+
+.marker-slimemold{
+    background-image: url(../../img/slimemold-b.svg);
+}
+.marker-slimemold-h {
+    background-image: url(../../img/slimemold-h.svg);
+}
+.marker-cluster-slimemold {
+    background-color: lighten(@slimemold-color, 40%);
+}
+.marker-cluster-slimemold div {
+    background-color: @slimemold-color;
+}
+.marker-naturalarea{
+    background-image: url(../../img/natural-b.svg);
+}
+.marker-naturalarea-h {
+    background-image: url(../../img/natural-h.svg);
+}
+.marker-cluster-naturalarea {
+    background-color: lighten(@naturalarea-color, 40%);
+}
+.marker-cluster-naturalarea div {
+    background-color: @naturalarea-color;
+}
+.nfd-legend .row {
+    padding-left: 17px;
+}
+.nfd-legend .row label{
+    line-height: 30px;
+    color: gray;
+}
+.nfd-legend div[class^="col-"] {
+    padding: 0px 5px;
+}
+.nfd-legend {
+width: 150px;
+}
+.nfd-images {
+    overflow: hidden;
+    cursor: pointer;
+}
+.nfd-thumbnails-container {
+    overflow: auto;
+    background-color: white;
+    position: relative;
+}
+.nfd-images .alert {
+    overflow: hidden;
+    position: relative;
+    height: 100px;
+    margin: 0;
+    padding: 0;
+    border-color: #eeeeee
+}
+.nfd-images.nfd-images-mobile .alert {
+    height: 50px;
+}
+.disabled .dropzone.alert.alert-info{
+    cursor: not-allowed;
+}
+.nfd-images.nfd-images-mobile .dropzone-content-image{
+    padding-top: 0px;
+}
+.nfd-images .nfd-image {
+    margin: 0px 20px;
+    height: 150px;
+    padding: 2px;
+    background-size: contain;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-color:  #edf2f6;
+    border: 1px solid;
+    -webkit-box-shadow: 0 0 8px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 8px 2px rgba(0, 0, 0, 0.1);
+    border: 1px solid #d0dbe4;
+}
+.img-card {
+    margin: 2px;
+    height: 158px;
+    padding: 3px 10px;
+    position: relative;
+}
+.image-remove {
+    top:0px;
+    right: 31px;
+    z-index: 5;
+    position: absolute;
+    font-size: x-large;
+}
+
+.img-card:hover .image-remove span {
+    color: lighten(black, 50%);
+}
+
+.image-remove span {
+    color: #edf2f6;
+}
+.nfd-images-mobile .image-remove span {
+    color: lighten(black, 50%);
+}
+
+.image-remove span:hover {
+    color: @ms2-color-danger !important;
+    cursor: pointer;
+}
+
+.disabled .image-remove span:hover {
+    color: #edf2f6;
+    cursor: not-allowed;
+}
+.nfd-thumbnails-container .img-loading-spinner{
+    position: absolute;
+    top: 66px;
+    left: calc(~'50% - 10px');
+}
+// Edit Panel styles
+.nfd-form-title {
+   text-align: center;
+   overflow: hidden;
+   white-space: nowrap;
+   text-overflow: ellipsis;
+   position: absolute;
+   top: 6px;
+   left: 35px;
+   right: 10px;
+   height: 35px;
+   font-size: 20px;
+   font-weight: 500;
+   color: #888888;
+}
+#mapstore-export .download-button {
+    padding-left: 8px;
+}
+#mapstore-export .download-button .glyphicon{
+    font-size: 20px;
+    color: white;
+    margin-right: 6px;
+}
+#mapstore-export .download-button .sk-circle:before{
+    background-color: white;
+}
+.background-list-container{
+    bottom: 45px !important;
+}
+.rw-popup-container.rw-calendar-popup {
+    width: 20em;
+}
+.spec-selector-full {
+    position: fixed;
+    top:0px;
+    bottom:0px;
+    left:0px;
+    right: 0px;
+    background-color: white;
+    padding: 2px 10px;
+    z-index: 2;
+}
+.input-full {
+    position: fixed;
+    top:0px;
+    bottom:0px;
+    left:0px;
+    right: 0px;
+    background-color: white;
+    padding: 2px 10px;
+    z-index: 2;
+}
+
+.spec-selector-full .dropdown-menu.bootstrap-typeahead-menu{
+    width: 100%;
+    max-height: 260px !important;
+}
+.nfdraw-tools-buttons.disabled button{
+color: #333;
+pointer-events: none;
+opacity: 0.5;
+}
+.nfdraw-tools-buttons.disabled button:hover{
+    cursor: not-allowed;
 }

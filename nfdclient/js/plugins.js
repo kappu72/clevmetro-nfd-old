@@ -8,7 +8,7 @@
 
 module.exports = {
     plugins: {
-        MapPlugin: require('../MapStore2/web/client/plugins/Map'),
+        MapPlugin: require('./plugins/NfdMap'),
         DrawerMenuPlugin: require('../MapStore2/web/client/plugins/DrawerMenu'),
         TutorialPlugin: require('../MapStore2/web/client/plugins/Tutorial'),
         TOCPlugin: require('../MapStore2/web/client/plugins/TOC'),
@@ -23,10 +23,12 @@ module.exports = {
         ZoomInPlugin: require('../MapStore2/web/client/plugins/ZoomIn'),
         ZoomOutPlugin: require('../MapStore2/web/client/plugins/ZoomOut'),
         NotificationsPlugin: require('../MapStore2/web/client/plugins/Notifications'),
+        BackgroundSelectorPlugin: require('../MapStore2/web/client/plugins/BackgroundSelector'),
         ViewEditNaturalFeaturesPlugin: require('./plugins/ViewEditNaturalFeatures'),
         AddNaturalFeaturesPlugin: require('./plugins/AddNaturalFeatures'),
         ToggleAddEditPanelPlugin: require('./plugins/ToggleAddEditPanel'),
-        FeaturesPlugin: require('./plugins/FeaturesPlugin')
+        FeaturesPlugin: require('./plugins/FeaturesPlugin'),
+        ExportFeaturesPlugin: require('./plugins/ExportFeatures')
     },
     requires: {}
 };

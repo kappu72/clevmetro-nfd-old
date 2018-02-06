@@ -13,7 +13,33 @@
             "group": "background",
             "visibility": true
         }, {
-            "type": "vector",
+        "type": "google",
+        "title": "Google HYBRID",
+        "name": "HYBRID",
+        "source": "google",
+        "group": "background",
+        "visibility": false
+      },
+      {
+        "type": "tileprovider",
+        "title": "NASAGIBS Night 2012",
+        "provider": "NASAGIBS.ViirsEarthAtNight2012",
+        "name": "Night2012",
+        "source": "nasagibs",
+        "group": "background",
+        "visibility": false
+      },
+      {
+                "type": "wms",
+        "url":"http://www.realvista.it/reflector/open/service",
+        "visibility": false,
+                "title": "e-Geos Ortofoto RealVista 1.0",
+                "name": "rv1",
+                "group": "background",
+                "format": "image/jpeg"
+            },
+         {
+            "type": "clustermarker",
             "queryable": true,
             "visibility": true,
             "group": "Natural features",
@@ -22,28 +48,15 @@
             "id": "naturalarea",
             "styleName": "marker",
             "style": {
-                "iconUrl": "./assets/img/marker-icon-blue.png",
-                "highlightIconUrl": "./assets/img/marker-icon-blue-highlight.png",
-                "iconAnchor": [12, 40]
+                "html":{
+                    "className": "marker-naturalarea",
+                    "iconSize": [30, 30],
+                    "iconAnchor": [15, 15]
+                }
             },
             "features" : []
-        }, {
-            "type": "vector",
-            "queryable": true,
-            "visibility": true,
-            "group": "Natural features",
-            "name": "Plants",
-            "hideLoading": true,
-            "id": "plant",
-            "styleName": "marker",
-            "style": {
-                "iconUrl": "./assets/img/marker-icon-green.png",
-                "highlightIconUrl": "./assets/img/marker-icon-green-highlight.png",
-                "iconAnchor": [12, 40]
-            },
-            "features" : []
-        }, {
-            "type": "vector",
+        },{
+            "type": "clustermarker",
             "queryable": true,
             "visibility": true,
             "group": "Natural features",
@@ -52,28 +65,15 @@
             "id": "slimemold",
             "styleName": "marker",
             "style": {
-                "iconUrl": "./assets/img/marker-icon-marine.png",
-                "highlightIconUrl": "./assets/img/marker-icon-marine-highlight.png",
-                "iconAnchor": [12, 40]
+                "html":{
+                    "className": "marker-slimemold",
+                    "iconSize": [30, 30],
+                    "iconAnchor": [15, 15]
+                }
             },
             "features" : []
         }, {
-            "type": "vector",
-            "queryable": true,
-            "visibility": true,
-            "group": "Natural features",
-            "name": "Fungi",
-            "hideLoading": true,
-            "id": "fungus",
-            "styleName": "marker",
-            "style": {
-                "iconUrl": "./assets/img/marker-icon-yellow.png",
-                "highlightIconUrl": "./assets/img/marker-icon-yellow-highlight.png",
-                "iconAnchor": [12, 40]
-            },
-            "features" : []
-        }, {
-            "type": "vector",
+            "type": "clustermarker",
             "queryable": true,
             "visibility": true,
             "group": "Natural features",
@@ -82,11 +82,47 @@
             "id": "animal",
             "styleName": "marker",
             "style": {
-                "iconUrl": "./assets/img/marker-icon-purple.png",
-                "highlightIconUrl": "./assets/img/marker-icon-purple-highlight.png",
-                "iconAnchor": [12, 40]
+                "html":{
+                    "className": "marker-animal",
+                    "iconSize": [30, 30],
+                    "iconAnchor": [15, 15]
+                }
             },
             "features" : []
-        }]
+        },{
+            "type": "clustermarker",
+            "queryable": true,
+            "visibility": true,
+            "group": "Natural features",
+            "name": "Fungi",
+            "hideLoading": true,
+            "id": "fungus",
+            "styleName": "marker",
+            "style": {
+                "html":{
+                    "className": "marker-fungus",
+                    "iconSize": [30, 30],
+                    "iconAnchor": [15, 15]
+                }
+            },
+            "features" : []
+        },  {
+            "type": "clustermarker",
+            "queryable": true,
+            "visibility": true,
+            "group": "Natural features",
+            "name": "Plants",
+            "hideLoading": true,
+            "id": "plant",
+            "styleName": "marker",
+            "style": {
+                "html":{
+                    "className": "marker-plant",
+                    "iconSize": [30, 30],
+                    "iconAnchor": [15, 15]
+                }
+            },
+            "features" : []
+        } ]
     }
 }

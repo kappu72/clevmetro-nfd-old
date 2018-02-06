@@ -11,16 +11,18 @@ const {connect} = require('react-redux');
 const assign = require('object-assign');
 
 const {toggleControl} = require('../../MapStore2/web/client/actions/controls');
-const {naturalFeatureCreated, getSpecies, addFeature, cancel} = require('../actions/naturalfeatures');
+const {addNaturalFeature, getSpecies, addFeature, cancel, addImage, removeImage,
+imageError, onFeaturePropertyChange} = require('../actions/naturalfeatures');
 const {changeDrawingStatus, endDrawing} = require('../../MapStore2/web/client/actions/draw');
 
 const Message = require('../../MapStore2/web/client/components/I18N/Message');
 
 const {DropdownButton, MenuItem, Glyphicon} = require('react-bootstrap');
 
-const {isWriter, isPublisher} = require('./naturalfeatures/securityutils.js');
-
+// const NfdImage  = require('../components/naturalfeatures/NfdImage');
 const SmartDockedNaturalFeatures = connect((state) => ({
+    height: state.map && state.map.present && state.map.present.size && state.map.present.size.height || 798,
+    width: state.map && state.map.present && state.map.present.size && state.map.present.size.width || 0,
     isVisible: state.controls.addnaturalfeatures && state.controls.addnaturalfeatures.enabled,
     forms: state.naturalfeatures.forms,
     featuretype: state.naturalfeatures.featuretype,
@@ -29,22 +31,26 @@ const SmartDockedNaturalFeatures = connect((state) => ({
     errors: state.naturalfeatures.errors,
     dockSize: state.naturalfeatures.dockSize,
     mode: state.naturalfeatures.mode,
-    isAdmin: state.naturalfeatures.is_admin || false,
-    isWriter: isWriter(state),
-    isPublisher: isPublisher(state)
+    images: state.naturalfeatures && state.naturalfeatures.selectedFeature && state.naturalfeatures.selectedFeature.images || [],
+    isMobile: state.browser && state.browser.mobile,
+    isLoading: !!(state.naturalfeatures && state.naturalfeatures.loading)
 }), {
     onToggle: toggleControl.bind(null, 'addnaturalfeatures', null),
-    onUpdate: naturalFeatureCreated.bind(null),
+    onUpdate: addNaturalFeature,
     getSpecies: getSpecies.bind(null),
     onChangeDrawingStatus: changeDrawingStatus,
     onEndDrawing: endDrawing,
-    cancel
+    cancel,
+    onError: imageError,
+    addImage: addImage,
+    removeImage: removeImage,
+    onFeaturePropertyChange
 })(require('../components/naturalfeatures/DockedNaturalFeatures'));
-require('../components/naturalfeatures/DockedNaturalFeatures.css');
+
 
 const AddNaturalFeatures = React.createClass({
     propTypes: {
-        active: React.PropTypes.string,
+        active: React.PropTypes.bool,
         onToggleNewNaturalFeature: React.PropTypes.func,
         glyph: React.PropTypes.string,
         buttonStyle: React.PropTypes.string,
@@ -52,7 +58,6 @@ const AddNaturalFeatures = React.createClass({
         buttonClassName: React.PropTypes.string,
         menuButtonStyle: React.PropTypes.object,
         disabled: React.PropTypes.bool,
-        visible: React.PropTypes.bool,
         plant_writer: React.PropTypes.bool,
         animal_writer: React.PropTypes.bool,
         slimemold_writer: React.PropTypes.bool,
@@ -67,7 +72,6 @@ const AddNaturalFeatures = React.createClass({
             menuOptions: {},
             buttonClassName: "square-button",
             disabled: false,
-            visible: false,
             plant_writer: false,
             animal_writer: false,
             slimemold_writer: false,
@@ -88,14 +92,14 @@ const AddNaturalFeatures = React.createClass({
                     {this.props.plant_writer &&
                         <MenuItem onClick={() => this.props.onToggleNewNaturalFeature({"featuretype": "plant", "featuresubtype": "fl"})}><Message msgId="naturalfeatures.flowering_plant"/></MenuItem>
                     }
-                    {this.props.plant_writer && false &&
+                    {this.props.plant_writer &&
                         <MenuItem onClick={() => this.props.onToggleNewNaturalFeature({"featuretype": "plant", "featuresubtype": "pl"})}><Message msgId="naturalfeatures.plant_generic"/></MenuItem>
                     }
                     {this.props.plant_writer &&
                         <MenuItem onClick={() => this.props.onToggleNewNaturalFeature({"featuretype": "plant", "featuresubtype": "mo"})}><Message msgId="naturalfeatures.moss"/></MenuItem>
                     }
-                    {this.props.fungus_writer && false &&
-                        <MenuItem disabled={true} onClick={() => this.props.onToggleNewNaturalFeature({"featuretype": "fungus", "featuresubtype": "fu"})}><Message msgId="naturalfeatures.fungus"/></MenuItem>
+                    {this.props.fungus_writer &&
+                        <MenuItem onClick={() => this.props.onToggleNewNaturalFeature({"featuretype": "fungus", "featuresubtype": "fu"})}><Message msgId="naturalfeatures.fungus"/></MenuItem>
                     }
                     {this.props.slimemold_writer &&
                         <MenuItem onClick={() => this.props.onToggleNewNaturalFeature({"featuretype": "slimemold", "featuresubtype": "sl"})}><Message msgId="naturalfeatures.slimemold"/></MenuItem>
@@ -123,8 +127,8 @@ const AddNaturalFeatures = React.createClass({
 
 module.exports = {
     AddNaturalFeaturesPlugin: assign(connect((state) => ({
-        active: state.controls.addnaturalfeatures && state.controls.addnaturalfeatures.enabled,
-        disabled: state.naturalfeatures && state.naturalfeatures.mode !== 'VIEW' && state.naturalfeatures.selectedFeature && (state.naturalfeatures.selectedFeature.geom || state.naturalfeatures.selectedFeature.id),
+        active: state.controls.addnaturalfeatures && !!state.controls.addnaturalfeatures.enabled,
+        disabled: !!(state.naturalfeatures && state.naturalfeatures.mode !== 'VIEW' && state.naturalfeatures.selectedFeature && (state.naturalfeatures.selectedFeature.geom || state.naturalfeatures.selectedFeature.id)),
         plant_writer: state.security.user && state.security.user.plant_writer,
         animal_writer: state.security.user && state.security.user.animal_writer,
         slimemold_writer: state.security.user && state.security.user.slimemold_writer,

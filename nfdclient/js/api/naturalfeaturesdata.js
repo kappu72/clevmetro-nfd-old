@@ -8,8 +8,21 @@
 const axios = require('../../MapStore2/web/client/libs/ajax');
 const ConfigUtils = require('../../MapStore2/web/client/utils/ConfigUtils');
 const assign = require('object-assign');
-const dataCache = {};
+const toBlob = require('canvas-to-blob');
 
+const dataCache = {};
+const getAccept = (format) => {
+    switch (format) {
+        case 'csv':
+            return {'Accept': 'text/csv'};
+        case 'xlsx':
+            return {'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};
+        case 'shp':
+            return {'Accept': 'application/zip'};
+        default :
+            return {'Accept': 'application/zip'};
+    }
+};
 let getOptions = () => {
     const token = sessionStorage.getItem('nfd-jwt-auth-token');
     if (token !== null) {
@@ -47,7 +60,19 @@ const Api = {
     },
     getFeatureSubtype: function(featuresubtype) {
         let url = '/nfdapi/featuretypes/' + featuresubtype + '/';
-        return axios.get(url, getOptions()).then(function(response) {return response.data; });
+        const cached = dataCache[url];
+        if (cached && new Date().getTime() < cached.timestamp + (ConfigUtils.getConfigProp('cacheDataExpire') || 600) * 1000) {
+            return new Promise((resolve) => {
+                resolve(cached.data);
+            });
+        }
+        return axios.get(url, getOptions()).then(function(response) {
+            dataCache[url] = {
+                timestamp: new Date().getTime(),
+                data: response.data
+            };
+            return response.data;
+        });
     },
     getFeatureType: function(ftype, nfid) {
         let url = '/nfdapi/featuretypes/' + ftype + '/' + nfid + '/';
@@ -78,6 +103,23 @@ const Api = {
         return axios.get(url, getOptions()).then((response) => {
             return response.data;
         });
+    },
+    uploadImage: function(image) {
+        const url = '/nfdapi/images/';
+        let data = new FormData();
+        const blob = toBlob(image.dataUrl);
+        data.append("image", blob, image.name);
+        return axios.post(url, data, getOptions()).then(function(response) {return response.data; });
+    },
+    exportFeature: function(featureType, id, format) {
+        let url = `/nfdapi/layers/${featureType}/${id}/?format=${format}`;
+        const headers = assign({}, (getOptions()).headers, getAccept(format));
+        return axios.get(url, {headers, responseType: 'arraybuffer', timeout: 60000});
+    },
+    exportFeatureList: function(featureType, format, filter, page) {
+        let url = `/nfdapi/list/${featureType}/?format=${format}${page}${filter}`;
+        const headers = assign({}, (getOptions()).headers, getAccept(format));
+        return axios.get(url, {headers, responseType: 'arraybuffer', timeout: 60000});
     }
 };
 
